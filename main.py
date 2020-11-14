@@ -1,13 +1,18 @@
 import csv
 import requests
-
+from selenium import webdriver
 from bs4 import BeautifulSoup
 
 URL_ALL_CAT = "https://gmg.greatermankato.com/allcategories"
 URL_BASE = "https://gmg.greatermankato.com/"
 FILENAME = "businesses.csv"
-HEADER = "Business Name & Website,Industry,Chamber Level,Street Address,City,State,Postal Code,Phone Number"
+URL = "https://mblsportal.sos.state.mn.us/Business/Search"
+HEADER = "Business Name & Website,Industry,Chamber Level,Street Address,City,State,Postal Code,Phone Number,Name on State Business Filings"
 
+output = []
+names = []
+
+driver = webdriver.Chrome()
 
 def getAllIndustries():
     page = requests.get(URL_ALL_CAT)
@@ -20,6 +25,53 @@ def getAllIndustries():
         industries.append(text)
     return industries
 
+def getNamesFromState(name):
+    driver.get(URL)
+    businessName = driver.find_element_by_id('BusinessName')
+    businessName.send_keys(name)
+    driver.find_element_by_xpath('//*[@id="businessNameTab"]/div[1]/div/button').click()
+    try:
+        driver.find_element_by_xpath(
+            '//*[@id="main"]/section/div[3]/div/div[2]/div[2]/div/table/tbody/tr[2]/td[2]/a').click()
+    except:
+        pass
+
+    soup = BeautifulSoup(driver.page_source, 'html.parser')
+
+    options = []
+
+    try:
+        options.append(soup.find("dt", text="Manager").find_next_sibling().text)
+    except:
+        pass
+    try:
+        options.append(soup.find("dt", text="Chief Executive Officer").find_next_sibling().text)
+    except:
+        pass
+    try:
+        options.append(soup.find("dt", text="Individual Contact for Agent").find_next_sibling().text)
+    except:
+        pass
+    try:
+        options.append(soup.find("dt", text="Registered Agent(s)").find_next_sibling().text)
+    except:
+        pass
+
+    # Remove Duplicates and known unwanteds
+    options = list(dict.fromkeys(options))
+    try:
+        options.remove('(Optional) Currently No Agent')
+    except:
+        pass
+    try:
+        options.remove('United States Corporation Agents, Inc.')
+    except:
+        pass
+    try:
+        options.remove('Corporation Service Company')
+    except:
+        pass
+    return str(options)
 
 def getBizInfo(industry):
     page = requests.get(URL_BASE + industry)
@@ -46,7 +98,7 @@ def getBizInfo(industry):
                 print("One or more Attribute Missing")
             else:
                 final = ['=HYPERLINK("' + website['href'] + '","' + name + '")', industry, chamberlvl, address, city, state, zip,
-                         phone]
+                         phone, getNamesFromState(name)]
                 rows.append(final)
     return rows
 
@@ -74,8 +126,8 @@ def main():
     initCSV(HEADER)
     verticals = getAllIndustries()
     for i in verticals:
-        output = getBizInfo(i)
-        writeToCSV(output)
+        ready = getBizInfo(i)
+        writeToCSV(ready)
 
 
 if __name__ == "__main__":
