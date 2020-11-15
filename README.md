@@ -1,5 +1,5 @@
 # KatoBizScraper
-Simple Python Program to Scrape the Mankato CoC and export to a CSV File.
+Simple Python Program to Scrape the Mankato CoC, check for owners names against the MN SoS Business Filings, and export to a CSV File.
 
 ## Requirements
 You'll need to have the requests, BeautifulSoup, and Selenium packages installed. You can quickly do this by running:
